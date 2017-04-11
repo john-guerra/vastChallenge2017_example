@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Vast 2017 MINICHALLENGE 1</title>
+
+	<link rel="stylesheet" href="dc.css">
+
+
+</head>
+<body>
+	<h1>VAST 2017 Minichallenge</h1>
+
+
+	<div id="carType">
+    <strong>Car Type</strong>
+    <span class="reset" style="display: none;">Selected: <span class="filter"></span></span>
+    <a class="reset" href="javascript:carTypeChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
+
+    <div class="clearfix"></div>
+
+	</div>
+
+	<div id="gateName">
+		<strong>Gate Name</strong>
+    <span class="reset" style="display: none;">Selected: <span class="filter"></span></span>
+    <a class="reset" href="javascript:gateNameChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
+
+    <div class="clearfix"></div>
+	</div>
+
+    <div>
+      <div class="dc-data-count">
+          <span class="filter-count"></span> selected out of <span class="total-count"></span> records | <a
+              href="javascript:dc.filterAll(); dc.renderAll();">Reset All</a>
+    </div>
+    </div>
+    <table class="table table-hover dc-data-table">
+    </table>
+
+
+	<script src="crossfilter.js"></script>
+	<script src="d3.js"></script>
+	<script src="dc.js"></script>
+
+	<script>
+
+		var carTypeChart = dc.rowChart("#carType"),
+			gateNameChart = dc.rowChart("#gateName"),
+			visCount = dc.dataCount(".dc-data-count"),
+			visTable = dc.dataTable(".dc-data-table");
+
+
+		d3.csv("Lekagul Sensor Data.csv.gz", function (err, data) {
+			// Timestamp,car-id,car-type,gate-name
+			// 2015-05-01 00:43:28,20154301124328-262,4,entrance3
+			// 2015-05-01 01:03:48,20154301124328-262,4,general-gate1
+			// 2015-05-01 01:06:24,20154301124328-262,4,ranger-stop2
+			// 2015-05-01 01:09:25,20154301124328-262,4,ranger-stop0
+			if (err) throw err;
+
+			data.forEach(function (d) {
+				d.Timestamp = new Date(d.Timestamp);
+			});
+
+			var ndx = crossfilter(data);
+			var all = ndx.groupAll();
+
+			var carTypeDim = ndx.dimension(function (d) { return d["car-type"]; });
+			var gateNameDim = ndx.dimension(function (d) { return d["gate-name"]; });
+			var dateDim = ndx.dimension(function (d) { return d.Timestamp; });
+
+			var carTypeGroup = carTypeDim.group();
+			var gateNameGroup = gateNameDim.group();
+			var dateGroup = dateDim.group();
+
+
+			carTypeChart
+				.dimension(carTypeDim)
+				.group(carTypeGroup)
+				.elasticX(true);
+
+			gateNameChart
+				.dimension(gateNameDim)
+				.group(gateNameGroup)
+				.elasticX(true)
+				.data(function (group) { return group.top(10); });
+
+
+			visCount
+				.dimension(ndx)
+				.group(all);
+
+			visTable
+				.dimension(dateDim)
+        // Data table does not use crossfilter group but rather a closure
+        // as a grouping function
+				.group(function (d) {
+            var format = d3.format('02d');
+            return d.Timestamp.getFullYear() + '/' + format((d.Timestamp.getMonth() + 1));
+        })
+				.columns([
+					"Timestamp",
+					"car-id",
+					"car-type",
+					"gate-name"
+					]);
+
+			dc.renderAll();
+
+		});
+	</script>
+</body>
+</html>
